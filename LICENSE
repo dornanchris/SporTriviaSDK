@@ -1,0 +1,47 @@
+SporTrivia SDK License Agreement
+Copyright (c) 2026 dornanchris ("Licensor"). All rights reserved.
+
+1. Grant of License
+   Subject to a current SporTrivia partnership agreement and valid partner
+   credentials issued by Licensor, Licensor grants you a non-exclusive,
+   non-transferable, revocable license to integrate the SporTrivia SDK
+   ("Software") into your application(s) and to distribute that application
+   to your end users in compiled (binary) form only.
+
+2. Restrictions
+   You may not:
+   (a) Use the Software without valid partner credentials issued by Licensor.
+   (b) Redistribute the Software in source form, or as a standalone library.
+   (c) Modify, reverse engineer, decompile, or create derivative works of the
+       Software except as required for normal integration with your application.
+   (d) Use the Software to access SporTrivia data or services outside the
+       scope granted by your partner credentials.
+   (e) Transfer or sublicense the Software to any third party.
+
+3. Credentials and Revocation
+   Partner credentials are issued by Licensor and may be revoked at any time,
+   for any reason. Upon revocation, your right to use the Software ceases
+   immediately and you must remove the Software from any applications under
+   your active development.
+
+4. Ownership
+   The Software is the property of Licensor. No title or ownership in the
+   Software is transferred to you. All rights not expressly granted are
+   reserved by Licensor.
+
+5. No Warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+6. Limitation of Liability
+   IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+   THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+7. Termination
+   This license terminates automatically upon revocation of your partner
+   credentials, breach of these terms, or termination of your partnership
+   agreement with Licensor.
+
+For partner inquiries, contact the SporTrivia team.
