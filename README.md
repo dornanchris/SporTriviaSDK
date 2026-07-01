@@ -47,7 +47,21 @@ let gameView = SporTriviaSDK.customGameView(
 )
 ```
 
-See [PARTNER_SETUP.md](PARTNER_SETUP.md) for the full integration guide, including how to add your credentials plist, IAM scoping, and the Android counterpart.
+## Deep linking
+
+Games shared from the SporTrivia portal open your app via the `sportrivia-<partnerId>`
+URL scheme. Register the scheme, then forward the URL to the SDK:
+
+```swift
+.onOpenURL { url in
+    if SporTriviaSDK.handleDeepLink(url),
+       let gameView = SporTriviaSDK.pendingGameView(delegate: self) {
+        // present gameView
+    }
+}
+```
+
+See [PARTNER_SETUP.md](PARTNER_SETUP.md) for the full integration guide, including how to add your credentials plist, IAM scoping, deep-link setup, and the Android counterpart.
 
 ## License
 

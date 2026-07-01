@@ -60,6 +60,67 @@ let gameView = SporTriviaSDK.customGameView(
 // Present gameView in a sheet, navigation stack, etc.
 ```
 
+### 5. Handle deep links (open games from the web redirect)
+
+Games shared from the SporTrivia portal open a redirect page that deep-links into
+**your** app using the scheme `sportrivia-<partnerId>` (your partner id is issued
+by the SporTrivia team; set it in the portal under **Account → Partner App**).
+
+**a. Register the URL scheme.** In your target's **Info** tab add a URL Type with
+URL Scheme `sportrivia-<partnerId>` (e.g. `sportrivia-islanders`). Equivalent
+`Info.plist`:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array><string>sportrivia-islanders</string></array>
+  </dict>
+</array>
+```
+
+**b. Pass the partner id to the SDK** so it can claim games after a fresh install:
+
+```swift
+let config = SporTriviaConfiguration(
+    credentials: credentials,
+    partnerId: "islanders",
+    redirectBaseURL: URL(string: "https://sportrivia-app.com")
+)
+SporTriviaSDK.configure(config)
+```
+
+**c. Handle the incoming link** (SwiftUI):
+
+```swift
+.onOpenURL { url in
+    if SporTriviaSDK.handleDeepLink(url) {
+        pendingGame = SporTriviaSDK.pendingGame()   // present it in your UI
+    }
+}
+```
+
+Then present the pending game (clearing it so it doesn't relaunch):
+
+```swift
+if let gameView = SporTriviaSDK.pendingGameView(delegate: self) {
+    // present gameView
+}
+```
+
+**d. Deferred deep linking (installed from the store).** For users who tap the
+link, install from the App Store, then open your app for the first time, ask the
+redirect service whether a game was saved off for them:
+
+```swift
+SporTriviaSDK.claimPendingGame { game in
+    guard let game = game else { return }
+    let view = SporTriviaSDK.customGameView(gameId: game.gameId, sport: game.sport, delegate: self)
+    // present view
+}
+```
+
 ---
 
 ## Android Setup
@@ -105,6 +166,58 @@ SporTriviaSDK.configure(
 
 ```java
 SporTriviaSDK.launchCustomGame(context, "NYI_Top5A", Sport.NHL, delegate);
+```
+
+### 5. Handle deep links (open games from the web redirect)
+
+Games shared from the SporTrivia portal deep-link into **your** app using the
+scheme `sportrivia-<partnerId>` (issued by the SporTrivia team; set it in the
+portal under **Account → Partner App**).
+
+**a. Declare your scheme** via a manifest placeholder in your app `build.gradle`:
+
+```groovy
+android {
+    defaultConfig {
+        manifestPlaceholders = [sporTriviaScheme: "sportrivia-islanders"]
+    }
+}
+```
+
+The SDK ships an exported `SporTriviaDeepLinkActivity` with an intent-filter for
+`${sporTriviaScheme}://game`, so no extra manifest entry is required — the game
+launches automatically when the link is opened.
+
+**b. Configure the SDK** with your partner id (and a default delegate to receive
+results from deep-linked games):
+
+```java
+SporTriviaSDK.configure(
+    new SporTriviaConfiguration.Builder(creds)
+        .partnerId("islanders")
+        .redirectBaseUrl("https://sportrivia-app.com")
+        .defaultDelegate(myDelegate)
+        .build()
+);
+```
+
+**c. (Optional) Handle the link yourself** instead of the bundled activity — add
+an intent-filter to your own activity and call:
+
+```java
+Uri data = getIntent().getData();
+SporTriviaSDK.handleDeepLink(this, data, myDelegate);
+```
+
+**d. Deferred deep linking (installed from Google Play).** On first launch, ask
+the redirect service for a game saved off before install:
+
+```java
+SporTriviaSDK.claimPendingGame(context, game -> {
+    if (game != null) {
+        SporTriviaSDK.launchCustomGame(context, game.getGameId(), game.getSport(), myDelegate);
+    }
+});
 ```
 
 ---
