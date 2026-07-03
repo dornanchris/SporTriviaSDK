@@ -10,6 +10,13 @@ import Foundation
 /// `Info.plist` (`CFBundleURLTypes`). The path and query are supplied by
 /// SporTrivia and identify the question to load.
 ///
+/// Apps that opt into Universal Links receive the QR's https URL instead:
+/// ```
+/// https://<sportrivia-host>/sdk/r/<team>/<questionId>?game=<gameId>&info=<sportCode>
+/// ```
+/// `parse` understands both forms, so one handler covers scheme launches
+/// and Universal Link launches alike.
+///
 /// Usage (SwiftUI):
 /// ```swift
 /// .onOpenURL { url in
@@ -34,29 +41,39 @@ public struct SporTriviaDeepLink: Equatable, Sendable {
 
     /// Parses a SporTrivia deep link URL.
     ///
-    /// Accepts both the partner form (`scheme://sportrivia/custom/<gameId>`)
-    /// and the SporTrivia app form (`sportrivia://custom/<gameId>`). Returns
-    /// `nil` if the URL is not a SporTrivia game link or the sport code in
-    /// the `info` query parameter is unknown.
+    /// Accepts the partner scheme form (`scheme://sportrivia/custom/<gameId>`),
+    /// the SporTrivia app form (`sportrivia://custom/<gameId>`), and the
+    /// Universal Link form (`https://…?game=<gameId>&info=<sportCode>`).
+    /// Returns `nil` if the URL is not a SporTrivia game link or the sport
+    /// code in the `info` query parameter is unknown.
     public static func parse(_ url: URL) -> SporTriviaDeepLink? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return nil
         }
 
-        var segments: [String] = []
-        if let host = components.host, !host.isEmpty {
-            segments.append(host)
-        }
-        segments.append(contentsOf: components.path.split(separator: "/").map(String.init))
-
-        guard
-            let customIndex = segments.firstIndex(where: { $0.caseInsensitiveCompare("custom") == .orderedSame }),
-            segments.indices.contains(customIndex + 1)
-        else {
-            return nil
+        func queryValue(_ name: String) -> String? {
+            components.queryItems?
+                .first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame })?
+                .value
         }
 
-        var gameId = segments[customIndex + 1]
+        var gameId = queryValue("game") ?? ""
+        if gameId.isEmpty {
+            var segments: [String] = []
+            if let host = components.host, !host.isEmpty {
+                segments.append(host)
+            }
+            segments.append(contentsOf: components.path.split(separator: "/").map(String.init))
+
+            guard
+                let customIndex = segments.firstIndex(where: { $0.caseInsensitiveCompare("custom") == .orderedSame }),
+                segments.indices.contains(customIndex + 1)
+            else {
+                return nil
+            }
+            gameId = segments[customIndex + 1]
+        }
+
         if gameId.lowercased().hasSuffix(".json") {
             gameId = String(gameId.dropLast(5))
         }
@@ -64,9 +81,7 @@ public struct SporTriviaDeepLink: Equatable, Sendable {
             return nil
         }
 
-        let sportCode = components.queryItems?
-            .first(where: { $0.name.caseInsensitiveCompare("info") == .orderedSame })?
-            .value ?? ""
+        let sportCode = queryValue("info") ?? ""
         guard let sport = Sport(rawValue: sportCode.trimmingCharacters(in: .whitespaces).lowercased()) else {
             return nil
         }

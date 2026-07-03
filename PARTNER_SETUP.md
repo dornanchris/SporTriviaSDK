@@ -215,6 +215,51 @@ private void handleSporTriviaLink(Intent intent) {
 }
 ```
 
+### Optional: verified links for direct launch (Universal Links / App Links)
+
+The scheme setup above goes through a brief hosted redirect page. If you also save your **Apple Team ID + bundle ID** and **Android signing-cert SHA-256 fingerprint** on the portal's Developer → Deep Linking & QR tab, the SporTrivia site lists your app in its `apple-app-site-association` / `assetlinks.json` files, and QR scans open your app *directly* — the browser never appears. The QR's https URL carries the same game info as a query string:
+
+```
+https://<sportrivia-host>/sdk/r/<your-team>/<question-id>?game=<gameId>&info=<sportCode>
+```
+
+`SporTriviaDeepLink.parse` understands this form too, so your existing handler code works unchanged. The redirect page and store fallback remain in place for devices without the app — verified links are purely an upgrade layer.
+
+**iOS:** add the Associated Domains capability (Signing & Capabilities → + Capability):
+
+```xml
+<key>com.apple.developer.associated-domains</key>
+<array>
+    <string>applinks:YOUR-SPORTRIVIA-HOST</string>
+</array>
+```
+
+SwiftUI's `onOpenURL` receives Universal Links. UIKit apps should also implement:
+
+```swift
+func application(_ application: UIApplication,
+                 continue userActivity: NSUserActivity,
+                 restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+    guard let url = userActivity.webpageURL,
+          let link = SporTriviaDeepLink.parse(url) else { return false }
+    // Present SporTriviaSDK.customGameView(gameId: link.gameId, sport: link.sport)
+    return true
+}
+```
+
+**Android:** add a second, auto-verified intent filter next to your scheme filter (the exact host and path prefix are shown pre-filled on the portal's Developer page):
+
+```xml
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="https"
+          android:host="YOUR-SPORTRIVIA-HOST"
+          android:pathPrefix="/sdk/r/your-team" />
+</intent-filter>
+```
+
 ---
 
 ## Security: IAM Policy (for SporTrivia admins)

@@ -17,6 +17,17 @@ final class SporTriviaDeepLinkTests: XCTestCase {
         XCTAssertEqual(link?.sport, .mlb)
     }
 
+    func testParseUniversalLinkForm() {
+        let link = SporTriviaDeepLink.parse("https://sportrivia-app.com/sdk/r/islanders/abc-123?game=NYI_Top5A&info=nhl")
+
+        XCTAssertEqual(link?.gameId, "NYI_Top5A")
+        XCTAssertEqual(link?.sport, .nhl)
+    }
+
+    func testParseUniversalLinkWithoutGameParamIsRejected() {
+        XCTAssertNil(SporTriviaDeepLink.parse("https://sportrivia-app.com/sdk/r/islanders/abc-123?info=nhl"))
+    }
+
     func testParseStripsJsonSuffix() {
         let link = SporTriviaDeepLink.parse("partnerapp://sportrivia/custom/NYI_Top5A.json?info=nhl")
 
