@@ -10,7 +10,9 @@ struct CustomGameFlowView: View {
 
     @StateObject private var gameState = GameState()
     @StateObject private var playerListManager = PlayerListManager()
-    @State private var flowStep: FlowStep = .userInfo
+    // Loading runs first so the player-info screen can be built from the
+    // answer key's data-capture configuration (collect_fields).
+    @State private var flowStep: FlowStep = .loading
     @State private var isLoading: Bool = false
     @State private var loadError: String?
 
@@ -40,12 +42,17 @@ struct CustomGameFlowView: View {
             case .userInfo:
                 UserInfoView(
                     gameState: gameState,
-                    onSubmit: { startLoading() },
+                    onSubmit: { beginGame() },
                     onCancel: { delegate?.sporTriviaDidCancel() }
                 )
 
             case .loading:
                 loadingView
+                    .onAppear {
+                        if realEngine == nil && !isLoading {
+                            startLoading()
+                        }
+                    }
 
             case .game:
                 if let engine = realEngine {
@@ -99,10 +106,16 @@ struct CustomGameFlowView: View {
 
                 await MainActor.run {
                     self.realEngine = engine
-                    engine.startGame()
-                    SporTriviaLogger.info("Game started — transitioning to game view")
-                    flowStep = .game
                     isLoading = false
+                    if gameState.collectFields.hasAnythingToCollect {
+                        SporTriviaLogger.info("Game loaded — collecting player info first")
+                        flowStep = .userInfo
+                    } else {
+                        // Nothing configured to collect: skip the info screen.
+                        engine.startGame()
+                        SporTriviaLogger.info("Game started — transitioning to game view")
+                        flowStep = .game
+                    }
                 }
             } catch {
                 SporTriviaLogger.error("Failed to load game '\(gameId)' (\(sport.rawValue)): \(error)")
@@ -113,6 +126,13 @@ struct CustomGameFlowView: View {
                 }
             }
         }
+    }
+
+    private func beginGame() {
+        guard let engine = realEngine else { return }
+        engine.startGame()
+        SporTriviaLogger.info("Game started — transitioning to game view")
+        flowStep = .game
     }
 
     private func endGame() {

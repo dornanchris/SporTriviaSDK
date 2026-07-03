@@ -109,6 +109,12 @@ SporTriviaSDK.launchCustomGame(context, "NYI_Top5A", Sport.NHL, delegate);
 
 ---
 
+## Fan Data Capture
+
+The player-info screen the SDK shows before a game is driven by the question's **Data Capture** step in the SporTrivia portal — nothing to configure in your app. The answer key JSON carries a `collect_fields` object (standard name/email/phone toggles, an over-18 checkbox, and any custom questions with their own required flags), the SDK builds the form from it dynamically, and the collected answers are uploaded to S3 with the game results (`custom_field_answers`, keyed by question label). If a question collects nothing, the screen is skipped entirely. Answer keys created before this feature show the original name/email/phone form. The same data is available in your `SporTriviaDelegate` completion callback via `SporTriviaUserInfo` (`over18`, `customFieldAnswers`).
+
+---
+
 ## Deep Linking & QR Codes
 
 Questions built in the SporTrivia portal with the **"Your own app"** destination produce a scannable QR code that launches the SDK inside your app. The flow:

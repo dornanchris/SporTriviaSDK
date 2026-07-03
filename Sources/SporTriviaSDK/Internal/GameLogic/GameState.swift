@@ -35,6 +35,12 @@ class GameState: ObservableObject {
     @Published var lastName: String = ""
     @Published var email: String = ""
     @Published var phoneNumber: String = ""
+    @Published var over18: Bool = false
+    @Published var customFieldAnswers: [String: String] = [:]
+
+    // Data-capture configuration from the answer key; set during loading,
+    // before the player-info screen is shown.
+    var collectFields: CollectFields = .legacyDefault
 
     /// Total number of players remaining to guess.
     var playersLeft: Int {

@@ -31,6 +31,7 @@ class GameEngine: ObservableObject {
         let answerKey = try await s3Service.downloadAnswerKey(customFileName: gameId)
         correctPlayerIds = answerKey.player_id.map { normalizePlayerId($0) }
         gameState.customQuestion = answerKey.question
+        gameState.collectFields = answerKey.collectFields ?? .legacyDefault
         SporTriviaLogger.info("Answer key loaded: \(correctPlayerIds.count) correct IDs")
         SporTriviaLogger.debug("Correct IDs: \(correctPlayerIds)")
 
@@ -141,7 +142,9 @@ class GameEngine: ObservableObject {
                 firstName: gameState.firstName,
                 lastName: gameState.lastName,
                 email: gameState.email,
-                phoneNumber: gameState.phoneNumber
+                phoneNumber: gameState.phoneNumber,
+                over18: gameState.over18,
+                customFieldAnswers: gameState.customFieldAnswers
             )
             let resultData = try JsonParser.formatGameResults(
                 userInfo: userInfo,
@@ -177,7 +180,9 @@ class GameEngine: ObservableObject {
                 firstName: gameState.firstName,
                 lastName: gameState.lastName,
                 email: gameState.email,
-                phoneNumber: gameState.phoneNumber
+                phoneNumber: gameState.phoneNumber,
+                over18: gameState.over18,
+                customFieldAnswers: gameState.customFieldAnswers
             ),
             correctPlayerNames: gameState.correctUserPlayerInfo.map { $0.playerName }
         )

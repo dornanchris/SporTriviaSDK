@@ -37,17 +37,34 @@ enum JsonParser {
     }
 
     /// Format game results as JSON for S3 upload.
+    ///
+    /// Writes the keys the SporTrivia portal reads back for its contacts
+    /// view and CSV export (name/email/phone/over_18/custom_field_answers/
+    /// answers_found), plus the original firstName/lastName/phoneNumber/
+    /// correctAnswers keys for older downstream consumers.
     static func formatGameResults(
         userInfo: SporTriviaUserInfo,
         gameId: String,
         correctPlayers: [PlayerInfo]
     ) throws -> Data {
-        var result: [String: Any] = [
+        let fullName = [userInfo.firstName, userInfo.lastName]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let answersFound = correctPlayers.map { player -> String in
+            player.yearsPlayed.isEmpty ? player.playerName : "\(player.playerName) \(player.yearsPlayed)"
+        }
+        let result: [String: Any] = [
+            "gameId": gameId,
+            "submitted_at": ISO8601DateFormatter().string(from: Date()),
+            "name": fullName,
+            "email": userInfo.email,
+            "phone": userInfo.phoneNumber,
+            "over_18": userInfo.over18,
+            "custom_field_answers": userInfo.customFieldAnswers,
+            "answers_found": answersFound,
             "firstName": userInfo.firstName,
             "lastName": userInfo.lastName,
-            "email": userInfo.email,
             "phoneNumber": userInfo.phoneNumber,
-            "gameId": gameId,
             "correctAnswers": correctPlayers.map { [
                 "playerId": $0.playerId,
                 "playerName": $0.playerName,
