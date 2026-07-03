@@ -42,6 +42,11 @@ class GameState: ObservableObject {
     // before the player-info screen is shown.
     var collectFields: CollectFields = .legacyDefault
 
+    // Per-question sponsorship from the answer key (nil banner = no sponsor)
+    @Published var sponsorshipImage: UIImage?
+    @Published var sponsorshipBrand: String = ""
+    @Published var sponsorshipURL: String = ""
+
     /// Total number of players remaining to guess.
     var playersLeft: Int {
         correctPlayerInfo.count

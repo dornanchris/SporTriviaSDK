@@ -26,6 +26,9 @@ struct GameView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 12) {
+                // Sponsorship banner (only when the question has a sponsor)
+                SponsorshipBannerView(gameState: gameState)
+
                 // Question or team display
                 questionSection
 

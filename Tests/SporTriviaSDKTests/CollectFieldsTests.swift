@@ -67,6 +67,37 @@ final class CollectFieldsTests: XCTestCase {
         XCTAssertEqual(answerKey.collectFields?.hasAnythingToCollect, false)
     }
 
+    func testParseAnswerKeyWithSponsorship() throws {
+        let json = """
+        {
+            "combo": "NYI_Top5A", "type": 2, "player_id": ["p1"],
+            "sponsorship": {
+                "id": "abc", "brand": "Acme Sports Bar", "name": "Summer promo",
+                "url": "https://example.com/promo",
+                "asset_key": "sponsorships/islanders/abc/banner.png",
+                "content_type": "image/png", "width": 1200, "height": 200
+            }
+        }
+        """.data(using: .utf8)!
+
+        let answerKey = try JsonParser.parseAnswerKey(from: json)
+        let sponsorship = try XCTUnwrap(answerKey.sponsorship)
+
+        XCTAssertEqual(sponsorship.brand, "Acme Sports Bar")
+        XCTAssertEqual(sponsorship.url, "https://example.com/promo")
+        XCTAssertEqual(sponsorship.assetKey, "sponsorships/islanders/abc/banner.png")
+    }
+
+    func testAnswerKeyWithoutSponsorship() throws {
+        let json = """
+        {"combo": "X_Y", "type": 2, "player_id": ["p1"]}
+        """.data(using: .utf8)!
+
+        let answerKey = try JsonParser.parseAnswerKey(from: json)
+
+        XCTAssertNil(answerKey.sponsorship)
+    }
+
     func testFormatGameResultsIncludesPortalKeys() throws {
         let userInfo = SporTriviaUserInfo(
             firstName: "Casey",

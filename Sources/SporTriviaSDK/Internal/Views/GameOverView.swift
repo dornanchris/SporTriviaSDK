@@ -18,6 +18,8 @@ struct GameOverView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 20) {
+                SponsorshipBannerView(gameState: gameState)
+
                 Spacer()
 
                 Text("GAME OVER!")

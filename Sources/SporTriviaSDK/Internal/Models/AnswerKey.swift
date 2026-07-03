@@ -7,6 +7,7 @@ struct AnswerKey: Decodable {
     let type: Int
     let question: String?
     let collectFields: CollectFields?
+    let sponsorship: SponsorshipInfo?
 
     enum CodingKeys: String, CodingKey {
         case player_id
@@ -14,6 +15,7 @@ struct AnswerKey: Decodable {
         case type
         case question
         case collect_fields
+        case sponsorship
     }
 
     init(from decoder: Decoder) throws {
@@ -38,6 +40,34 @@ struct AnswerKey: Decodable {
         type = try container.decode(Int.self, forKey: .type)
         question = try container.decodeIfPresent(String.self, forKey: .question)
         collectFields = try? container.decodeIfPresent(CollectFields.self, forKey: .collect_fields)
+        sponsorship = try? container.decodeIfPresent(SponsorshipInfo.self, forKey: .sponsorship)
+    }
+}
+
+/// Per-question sponsorship chosen in the SporTrivia portal and embedded
+/// in the answer key JSON. `assetKey` is the S3 key of the banner image.
+struct SponsorshipInfo: Decodable, Equatable {
+    let brand: String
+    let url: String
+    let assetKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case brand
+        case url
+        case asset_key
+    }
+
+    init(brand: String, url: String, assetKey: String) {
+        self.brand = brand
+        self.url = url
+        self.assetKey = assetKey
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        brand = (try? container.decodeIfPresent(String.self, forKey: .brand)) ?? ""
+        url = (try? container.decodeIfPresent(String.self, forKey: .url)) ?? ""
+        assetKey = (try? container.decodeIfPresent(String.self, forKey: .asset_key)) ?? ""
     }
 }
 

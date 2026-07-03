@@ -74,6 +74,25 @@ class GameEngine: ObservableObject {
             gameState.team1String = teamName
             gameState.team2String = ""
         }
+
+        // 6. Load sponsorship banner (optional, non-fatal): the portal embeds
+        // the chosen sponsorship in the answer key with the banner's S3 key.
+        if let sponsorship = answerKey.sponsorship, !sponsorship.assetKey.isEmpty {
+            do {
+                let bannerData = try await s3Service.download(key: sponsorship.assetKey)
+                if let bannerImage = UIImage(data: bannerData) {
+                    await MainActor.run {
+                        gameState.sponsorshipImage = bannerImage
+                        gameState.sponsorshipBrand = sponsorship.brand
+                        gameState.sponsorshipURL = sponsorship.url
+                    }
+                    SporTriviaLogger.info("Sponsorship banner loaded for '\(sponsorship.brand)'")
+                }
+            } catch {
+                SporTriviaLogger.warning("Sponsorship banner failed to load (\(sponsorship.assetKey)): \(error) — game continues without it")
+            }
+        }
+
         SporTriviaLogger.info("Game ready: '\(teamName)', \(gameState.correctPlayerInfo.count) players to guess, question: \(gameState.customQuestion ?? "none")")
     }
 
