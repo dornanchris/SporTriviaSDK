@@ -109,6 +109,114 @@ SporTriviaSDK.launchCustomGame(context, "NYI_Top5A", Sport.NHL, delegate);
 
 ---
 
+## Deep Linking & QR Codes
+
+Questions built in the SporTrivia portal with the **"Your own app"** destination produce a scannable QR code that launches the SDK inside your app. The flow:
+
+1. The QR encodes a SporTrivia-hosted redirect URL (e.g. `https://<sportrivia-host>/sdk/r/<question-id>`) that always carries the information identifying the question.
+2. When scanned, the page immediately attempts your deep link — your URL scheme wrapped around the SporTrivia game info:
+
+   ```
+   yourscheme://sportrivia/custom/<gameId>?info=<sportCode>
+   ```
+
+3. If your app is installed, it opens and you hand the URL to the SDK. If not, the page (branded for your team) detects iOS or Android, saves the game info so your app can claim it after install, and redirects the fan to your App Store / Google Play listing.
+
+To enable this, save your **URL scheme**, **Android package name**, and **store URLs** on the portal's **Developer → Deep Linking & QR** tab. That unlocks the "Your own app" destination on the question setup page.
+
+### iOS: register your URL scheme in Info.plist
+
+In Xcode, select your project in the Project navigator, choose your app target, and open the **Info** tab. Under **URL Types**, click **+** and enter your scheme. Or right-click `Info.plist` → *Open As* → *Source Code* and add:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLName</key>
+        <string>com.yourcompany.yourapp.sportrivia</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>yourscheme</string>
+        </array>
+    </dict>
+</array>
+```
+
+### iOS: handle the incoming URL
+
+Use `SporTriviaDeepLink` to parse the link, then present the game view.
+
+SwiftUI:
+
+```swift
+.onOpenURL { url in
+    guard let link = SporTriviaDeepLink.parse(url) else { return }
+    let gameView = SporTriviaSDK.customGameView(
+        gameId: link.gameId,
+        sport: link.sport,
+        delegate: self
+    )
+    // Present gameView in a sheet, navigation stack, etc.
+}
+```
+
+UIKit (AppDelegate):
+
+```swift
+func application(_ app: UIApplication,
+                 open url: URL,
+                 options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+    guard let link = SporTriviaDeepLink.parse(url) else { return false }
+    let gameView = SporTriviaSDK.customGameView(gameId: link.gameId, sport: link.sport)
+    // Wrap in UIHostingController and present it.
+    return true
+}
+```
+
+### Android: register your URL scheme in AndroidManifest.xml
+
+Add an intent filter to the activity that should receive the QR launch (`android:exported="true"` is required on Android 12+):
+
+```xml
+<activity
+    android:name=".MainActivity"
+    android:exported="true"
+    android:launchMode="singleTask">
+
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="yourscheme" android:host="sportrivia" />
+    </intent-filter>
+</activity>
+```
+
+### Android: handle the incoming intent
+
+```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    handleSporTriviaLink(getIntent());
+}
+
+@Override
+protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent);
+    handleSporTriviaLink(intent);
+}
+
+private void handleSporTriviaLink(Intent intent) {
+    SporTriviaDeepLink link = SporTriviaDeepLink.parse(intent.getData());
+    if (link != null) {
+        SporTriviaSDK.launchCustomGame(this, link.getGameId(), link.getSport(), myDelegate);
+    }
+}
+```
+
+---
+
 ## Security: IAM Policy (for SporTrivia admins)
 
 When provisioning a new partner, create an IAM user with the following policy. This limits what the partner's credentials can do in your S3 bucket.
