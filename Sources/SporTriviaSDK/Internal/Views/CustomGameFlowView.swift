@@ -15,6 +15,7 @@ struct CustomGameFlowView: View {
     @State private var flowStep: FlowStep = .loading
     @State private var isLoading: Bool = false
     @State private var loadError: String?
+    @State private var showExitConfirm: Bool = false
 
     private var s3Service: S3DataService {
         S3DataService(
@@ -60,7 +61,8 @@ struct CustomGameFlowView: View {
                         gameState: gameState,
                         gameEngine: engine,
                         playerListManager: playerListManager,
-                        onGameEnd: { endGame() }
+                        onGameEnd: { endGame() },
+                        onExit: { showExitConfirm = true }
                     )
                 }
 
@@ -78,6 +80,12 @@ struct CustomGameFlowView: View {
                     onDone: { finishFlow() }
                 )
             }
+        }
+        .alert("Leave the game?", isPresented: $showExitConfirm) {
+            Button("Keep Playing", role: .cancel) {}
+            Button("Leave", role: .destructive) { exitGame() }
+        } message: {
+            Text("Your progress won't be saved.")
         }
     }
 
@@ -143,6 +151,11 @@ struct CustomGameFlowView: View {
         if let engine = realEngine {
             Task { await engine.uploadResults() }
         }
+    }
+
+    private func exitGame() {
+        SporTriviaLogger.info("Player exited the game early")
+        delegate?.sporTriviaDidCancel()
     }
 
     private func finishFlow() {

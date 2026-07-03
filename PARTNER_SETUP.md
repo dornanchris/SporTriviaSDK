@@ -57,7 +57,9 @@ let gameView = SporTriviaSDK.customGameView(
     sport: .nhl,
     delegate: self
 )
-// Present gameView in a sheet, navigation stack, etc.
+// Present gameView full screen (recommended): .fullScreenCover(...). The
+// flow has its own exit button with confirmation, and swipe-to-dismiss is
+// disabled if you present it as a sheet.
 ```
 
 ---
@@ -168,7 +170,9 @@ SwiftUI:
         sport: link.sport,
         delegate: self
     )
-    // Present gameView in a sheet, navigation stack, etc.
+    // Present gameView full screen (recommended): .fullScreenCover(...). The
+// flow has its own exit button with confirmation, and swipe-to-dismiss is
+// disabled if you present it as a sheet.
 }
 ```
 

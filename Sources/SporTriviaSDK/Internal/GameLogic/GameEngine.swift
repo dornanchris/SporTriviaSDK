@@ -87,9 +87,11 @@ class GameEngine: ObservableObject {
                         gameState.sponsorshipURL = sponsorship.url
                     }
                     SporTriviaLogger.info("Sponsorship banner loaded for '\(sponsorship.brand)'")
+                } else {
+                    SporTriviaLogger.error("Sponsorship banner for '\(sponsorship.brand)' downloaded but could not be decoded as an image (\(sponsorship.assetKey), \(bannerData.count) bytes) — banner will not be shown")
                 }
             } catch {
-                SporTriviaLogger.warning("Sponsorship banner failed to load (\(sponsorship.assetKey)): \(error) — game continues without it")
+                SporTriviaLogger.error("Sponsorship banner failed to download (\(sponsorship.assetKey)): \(error) — banner will not be shown. If this is an access error, the SDK credentials need s3:GetObject on sponsorships/* (see PARTNER_SETUP.md)")
             }
         }
 

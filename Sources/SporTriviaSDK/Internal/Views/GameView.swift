@@ -7,6 +7,7 @@ struct GameView: View {
     @ObservedObject var gameEngine: GameEngine
     @ObservedObject var playerListManager: PlayerListManager
     let onGameEnd: () -> Void
+    let onExit: () -> Void
 
     @State private var userInput: String = ""
     @State private var isCheckMark: Bool = false
@@ -26,6 +27,17 @@ struct GameView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 12) {
+                // Exit button — asks for confirmation via onExit
+                HStack {
+                    Spacer()
+                    Button(action: onExit) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(theme.textColor.opacity(0.6))
+                    }
+                    .accessibilityLabel("Exit game")
+                }
+
                 // Sponsorship banner (only when the question has a sponsor)
                 SponsorshipBannerView(gameState: gameState)
 

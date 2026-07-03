@@ -27,6 +27,12 @@ public final class SporTriviaSDK {
     /// Returns a SwiftUI View that hosts the entire custom game flow
     /// (User Info -> Game -> Game Over -> Answers).
     ///
+    /// Present it with `.fullScreenCover` (recommended). Interactive
+    /// swipe-to-dismiss is disabled so a sheet can't be accidentally
+    /// swiped away mid-game; the player exits through the in-game close
+    /// button, which asks for confirmation and calls
+    /// ``SporTriviaDelegate/sporTriviaDidCancel()``.
+    ///
     /// - Parameters:
     ///   - gameId: The custom game identifier (S3 file name, e.g. "NYI_Top5A").
     ///   - sport: The sport/league for this game.
@@ -46,6 +52,7 @@ public final class SporTriviaSDK {
             configuration: config,
             delegate: delegate
         )
+        .interactiveDismissDisabled()
     }
 
     /// The current theme, falling back to defaults if none configured.
