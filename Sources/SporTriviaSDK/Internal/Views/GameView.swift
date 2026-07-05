@@ -128,37 +128,40 @@ struct GameView: View {
                     playerListManager.userInput = newValue
                     playerListManager.updateFilteredPlayerInfoList()
                     isDropdownVisible = !playerListManager.filteredPlayerInfoList.isEmpty && !newValue.isEmpty
-                    SporTriviaLogger.info("Autocomplete UI: onChange fired, dropdownVisible=\(isDropdownVisible), filtered=\(playerListManager.filteredPlayerInfoList.count)")
                 }
                 .onSubmit {
                     onSubmit()
                 }
 
             if isDropdownVisible {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(playerListManager.filteredPlayerInfoList.prefix(10), id: \.playerId) { player in
-                            Button(action: {
-                                userInput = player.playerName
-                                playerListManager.selectedPlayerInfo = player
-                                isDropdownVisible = false
-                            }) {
-                                HStack {
-                                    Text(player.playerName)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Text(player.yearsPlayed)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
+                // A plain VStack (not ScrollView) so the dropdown sizes to its
+                // content and always renders. A ScrollView only constrained by
+                // `.frame(maxHeight:)` collapses to ~0 height inside a VStack —
+                // that was why the populated suggestion list never appeared.
+                // Cap at 6 rows so it fits above the keyboard.
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(playerListManager.filteredPlayerInfoList.prefix(6), id: \.playerId) { player in
+                        Button(action: {
+                            userInput = player.playerName
+                            playerListManager.selectedPlayerInfo = player
+                            isDropdownVisible = false
+                        }) {
+                            HStack {
+                                Text(player.playerName)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text(player.yearsPlayed)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
-                            Divider()
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        Divider()
                     }
                 }
-                .frame(maxHeight: 200)
                 .background(Color(UIColor.systemBackground))
                 .cornerRadius(8)
                 .shadow(radius: 4)

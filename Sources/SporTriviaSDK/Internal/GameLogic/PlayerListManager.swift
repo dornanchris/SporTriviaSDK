@@ -36,7 +36,6 @@ class PlayerListManager: ObservableObject {
             }
         }
         filteredPlayerInfoList = matches
-        SporTriviaLogger.info("Autocomplete filter: input='\(userInput)' normalized='\(normalizedInput)' pool=\(playerInfoList.count) → \(matches.count) matches")
     }
 
     /// Try to select a player from the current input text.

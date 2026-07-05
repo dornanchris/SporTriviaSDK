@@ -39,11 +39,10 @@ final class LocationService: NSObject, LocationProviding, CLLocationManagerDeleg
             return
         }
 
-        guard CLLocationManager.locationServicesEnabled() else {
-            settle(.unavailable)
-            return
-        }
-
+        // Note: we intentionally do NOT call CLLocationManager.locationServicesEnabled()
+        // here — it does synchronous IPC that blocks the main thread (Apple warns
+        // against it and it caused a visible hang). The authorization request and
+        // the delegate's didFailWithError path handle services-off gracefully.
         switch manager.authorizationStatus {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
