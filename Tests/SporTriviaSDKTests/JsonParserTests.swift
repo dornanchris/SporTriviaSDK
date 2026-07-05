@@ -276,4 +276,24 @@ final class JsonParserTests: XCTestCase {
         XCTAssertFalse(ids.contains("noname"), "record without any name key is unusable")
         XCTAssertEqual(players.first { $0.playerId == "nullseason" }?.yearsPlayed, "")
     }
+
+    /// The exact live MLB format: name under the `name` key (not `Player`),
+    /// string player_id, integer seasons, a trailing "?" in the name. This is
+    /// what regressed on iOS — it must parse to a non-empty list.
+    func testParsePlayerListMLBNameFormat() throws {
+        let json = """
+        [
+            {"player_id": "jonesa03", "name": "A. Jones?", "first_season": 1926, "last_season": 1926},
+            {"player_id": "aaronha01", "name": "Hank Aaron", "first_season": 1954, "last_season": 1976}
+        ]
+        """.data(using: .utf8)!
+
+        let players = try JsonParser.parsePlayerList(from: json)
+
+        XCTAssertEqual(players.count, 2, "MLB `name`-keyed records must parse")
+        let jones = players.first { $0.playerId == "jonesa03" }
+        XCTAssertEqual(jones?.playerName, "A. Jones", "trailing ? is stripped")
+        XCTAssertEqual(jones?.yearsPlayed, "1926-1926", "integer seasons render without decimals")
+        XCTAssertEqual(jones?.normalizedName, "ajones")
+    }
 }
