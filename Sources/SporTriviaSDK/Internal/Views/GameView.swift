@@ -128,6 +128,7 @@ struct GameView: View {
                     playerListManager.userInput = newValue
                     playerListManager.updateFilteredPlayerInfoList()
                     isDropdownVisible = !playerListManager.filteredPlayerInfoList.isEmpty && !newValue.isEmpty
+                    SporTriviaLogger.info("Autocomplete UI: onChange fired, dropdownVisible=\(isDropdownVisible), filtered=\(playerListManager.filteredPlayerInfoList.count)")
                 }
                 .onSubmit {
                     onSubmit()
