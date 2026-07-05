@@ -119,7 +119,9 @@ enum JsonParser {
             ("location", locationValue),
             ("location_status", .string(location.status.rawValue)),
         ])
-        return payload.serializedData()
+        // Pretty-printed (one field per line) for human-readable exports; key
+        // order and content match the Android SDK byte-for-content.
+        return payload.serializedData(pretty: true)
     }
 
     /// UTC timestamp matching the Android SDK byte-for-byte

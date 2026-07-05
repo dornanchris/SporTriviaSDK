@@ -17,7 +17,13 @@ indirect enum JsonValue {
     case object([(String, JsonValue)])
 
     /// Serialize to compact JSON.
-    func serialized() -> String {
+    /// Serialize to JSON.
+    /// - Parameters:
+    ///   - pretty: when true, one field per line, 2-space indented, nested
+    ///     objects/arrays expanded (empty ones stay inline). Key order and
+    ///     content are identical to the compact form.
+    ///   - indentLevel: internal recursion depth; callers pass 0.
+    func serialized(pretty: Bool = false, indentLevel: Int = 0) -> String {
         switch self {
         case .string(let value):
             return JsonValue.escape(value)
@@ -33,17 +39,35 @@ indirect enum JsonValue {
         case .null:
             return "null"
         case .array(let items):
-            return "[" + items.map { $0.serialized() }.joined(separator: ",") + "]"
+            if items.isEmpty { return "[]" }
+            if !pretty {
+                return "[" + items.map { $0.serialized() }.joined(separator: ",") + "]"
+            }
+            let inner = String(repeating: "  ", count: indentLevel + 1)
+            let outer = String(repeating: "  ", count: indentLevel)
+            let body = items
+                .map { inner + $0.serialized(pretty: true, indentLevel: indentLevel + 1) }
+                .joined(separator: ",\n")
+            return "[\n" + body + "\n" + outer + "]"
         case .object(let pairs):
+            if pairs.isEmpty { return "{}" }
+            if !pretty {
+                let body = pairs
+                    .map { "\(JsonValue.escape($0.0)):\($0.1.serialized())" }
+                    .joined(separator: ",")
+                return "{" + body + "}"
+            }
+            let inner = String(repeating: "  ", count: indentLevel + 1)
+            let outer = String(repeating: "  ", count: indentLevel)
             let body = pairs
-                .map { "\(JsonValue.escape($0.0)):\($0.1.serialized())" }
-                .joined(separator: ",")
-            return "{" + body + "}"
+                .map { "\(inner)\(JsonValue.escape($0.0)): \($0.1.serialized(pretty: true, indentLevel: indentLevel + 1))" }
+                .joined(separator: ",\n")
+            return "{\n" + body + "\n" + outer + "}"
         }
     }
 
-    func serializedData() -> Data {
-        Data(serialized().utf8)
+    func serializedData(pretty: Bool = false) -> Data {
+        Data(serialized(pretty: pretty).utf8)
     }
 
     private static func escape(_ string: String) -> String {

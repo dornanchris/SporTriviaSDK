@@ -17,24 +17,6 @@ struct CustomGameFlowView: View {
     @State private var loadError: String?
     @State private var showExitConfirm: Bool = false
 
-    private var s3Service: S3DataService {
-        S3DataService(
-            credentialProvider: configuration.credentialProvider,
-            bucketName: configuration.s3BucketName
-        )
-    }
-
-    private var imageCache: ImageCache {
-        ImageCache(s3Service: s3Service)
-    }
-
-    @StateObject private var gameEngine: GameEngine = GameEngine(
-        gameState: GameState(),
-        playerListManager: PlayerListManager(),
-        s3Service: S3DataService(credentialProvider: PlaceholderCredentialProvider(), bucketName: ""),
-        imageCache: ImageCache(s3Service: S3DataService(credentialProvider: PlaceholderCredentialProvider(), bucketName: ""))
-    )
-
     @State private var realEngine: GameEngine?
     @State private var locationService = LocationService()
 
@@ -215,15 +197,4 @@ private enum FlowStep {
     case game
     case gameOver
     case answers
-}
-
-// MARK: - Placeholder (used only for @StateObject initialization; replaced at runtime)
-
-private struct PlaceholderCredentialProvider: SporTriviaCredentialProvider {
-    func presignedGetURL(forKey key: String) async throws -> URL {
-        throw S3DataServiceError.downloadFailed(key: key)
-    }
-    func presignedPutURL(forKey key: String) async throws -> URL {
-        throw S3DataServiceError.uploadFailed(key: key)
-    }
 }

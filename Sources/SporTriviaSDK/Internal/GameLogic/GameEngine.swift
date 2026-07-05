@@ -48,7 +48,13 @@ class GameEngine: ObservableObject {
 
         // 2. Download player list (parsed leniently, deduplicated)
         let players = try await s3Service.downloadPlayerList(sport: sport)
-        SporTriviaLogger.info("Player list loaded: \(players.count) players")
+        if players.isEmpty {
+            // Empty here means a runtime data/parse problem with this sport's
+            // player file — the autocomplete dropdown will have nothing to show.
+            SporTriviaLogger.warning("\u{26a0}\u{fe0f} Player list is EMPTY for \(sport.rawValue) — autocomplete suggestions will not appear. Check the all_\(sport.rawValue)_players.json format.")
+        } else {
+            SporTriviaLogger.info("\u{2705} Player list loaded: \(players.count) players for \(sport.rawValue) — autocomplete ready")
+        }
 
         // 3. Match answers to the player list
         let matchedPlayers = findMatchingPlayerInfo(playerIds: loadedCorrectIds, in: players)

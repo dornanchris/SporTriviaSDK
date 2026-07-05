@@ -52,4 +52,48 @@ final class OrderedJsonWriterTests: XCTestCase {
         XCTAssertEqual(parsed?["s"] as? String, "quote \" and emoji 🎉")
         XCTAssertEqual(parsed?["n"] as? Double, -0.25)
     }
+
+    // MARK: - Pretty printing
+
+    func testPrettyOneFieldPerLinePreservesOrder() {
+        let value = JsonValue.object([
+            ("zebra", .int(1)),
+            ("alpha", .int(2)),
+        ])
+        XCTAssertEqual(value.serialized(pretty: true), "{\n  \"zebra\": 1,\n  \"alpha\": 2\n}")
+    }
+
+    func testPrettyNestsAndKeepsEmptyInline() {
+        let value = JsonValue.object([
+            ("obj", .object([("k", .string("v"))])),
+            ("empty_obj", .object([])),
+            ("list", .array([.int(1), .int(2)])),
+            ("empty_list", .array([])),
+        ])
+        let expected = """
+        {
+          "obj": {
+            "k": "v"
+          },
+          "empty_obj": {},
+          "list": [
+            1,
+            2
+          ],
+          "empty_list": []
+        }
+        """
+        XCTAssertEqual(value.serialized(pretty: true), expected)
+    }
+
+    func testPrettyOutputParsesToSameObject() throws {
+        let value = JsonValue.object([
+            ("s", .string("quote \" and emoji 🎉")),
+            ("arr", .array([.object([("x", .null)])])),
+        ])
+        let pretty = value.serializedData(pretty: true)
+        XCTAssertTrue(String(data: pretty, encoding: .utf8)!.contains("\n"))
+        let parsed = try JSONSerialization.jsonObject(with: pretty) as? [String: Any]
+        XCTAssertEqual(parsed?["s"] as? String, "quote \" and emoji 🎉")
+    }
 }
