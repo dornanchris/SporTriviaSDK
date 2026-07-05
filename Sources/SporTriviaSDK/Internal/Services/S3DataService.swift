@@ -69,27 +69,14 @@ class S3DataService {
         }
     }
 
-    /// Download the player list for a given sport.
+    /// Download the player list for a given sport. Parsing is lenient —
+    /// malformed records are skipped, never the whole list (see
+    /// JsonParser.parsePlayerList).
     func downloadPlayerList(sport: Sport) async throws -> [PlayerInfo] {
         let key = "answer_keys/\(sport.rawValue)/all_\(sport.rawValue)_players.json"
         SporTriviaLogger.info("Loading player list: \(key)")
         let data = try await download(key: key)
-        let playerDataList = try JSONDecoder().decode([PlayerData].self, from: data)
-        return playerDataList.map { pd in
-            let yearsPlayed = "\(pd.first_season)-\(pd.last_season)"
-                .replacingOccurrences(of: ".0", with: "")
-            return PlayerInfo(
-                playerId: pd.player_id.trimmingCharacters(in: .whitespacesAndNewlines),
-                playerName: pd.playerName
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                    .replacingOccurrences(of: "\u{00c2}", with: "")
-                    .replacingOccurrences(of: "#", with: "")
-                    .replacingOccurrences(of: "+", with: "")
-                    .replacingOccurrences(of: "*", with: "")
-                    .replacingOccurrences(of: "?", with: ""),
-                yearsPlayed: yearsPlayed
-            )
-        }
+        return try JsonParser.parsePlayerList(from: data)
     }
 
     /// Download a team image from S3.

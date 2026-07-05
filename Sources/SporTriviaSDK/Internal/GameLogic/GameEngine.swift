@@ -13,6 +13,10 @@ class GameEngine: ObservableObject {
     let s3Service: S3DataService
     let imageCache: ImageCache
 
+    /// Best-effort device location for the results upload; injected by the
+    /// flow coordinator. Nil (e.g. in tests) uploads location_status "unavailable".
+    weak var locationProvider: LocationProviding?
+
     init(gameState: GameState, playerListManager: PlayerListManager, s3Service: S3DataService, imageCache: ImageCache) {
         self.gameState = gameState
         self.playerListManager = playerListManager
@@ -21,38 +25,47 @@ class GameEngine: ObservableObject {
     }
 
     /// Load game data from S3 and set up the game.
+    ///
+    /// Runs on a background task: all downloads/parsing happen off the main
+    /// thread, and every @Published mutation (GameState, PlayerListManager)
+    /// hops to the main actor — SwiftUI drops updates published from
+    /// background threads, which is how the autocomplete list could load
+    /// but never appear.
     func loadGame(gameId: String, sport: Sport) async throws {
         SporTriviaLogger.info("Loading game: gameId=\(gameId), sport=\(sport.rawValue)")
-        gameState.gameId = gameId
-        gameState.sport = sport
-        gameState.customFileName = gameId
+        await MainActor.run {
+            gameState.gameId = gameId
+            gameState.sport = sport
+            gameState.customFileName = gameId
+        }
 
         // 1. Download answer key
         let answerKey = try await s3Service.downloadAnswerKey(customFileName: gameId)
-        correctPlayerIds = answerKey.player_id.map { normalizePlayerId($0) }
-        gameState.customQuestion = answerKey.question
-        gameState.collectFields = answerKey.collectFields ?? .legacyDefault
-        gameState.responsePath = answerKey.responsePath
-        SporTriviaLogger.info("Answer key loaded: \(correctPlayerIds.count) correct IDs")
-        SporTriviaLogger.debug("Correct IDs: \(correctPlayerIds)")
+        let loadedCorrectIds = answerKey.player_id.map { normalizePlayerId($0) }
+        correctPlayerIds = loadedCorrectIds
+        SporTriviaLogger.info("Answer key loaded: \(loadedCorrectIds.count) correct IDs")
+        SporTriviaLogger.debug("Correct IDs: \(loadedCorrectIds)")
 
-        // 2. Download player list
+        // 2. Download player list (parsed leniently, deduplicated)
         let players = try await s3Service.downloadPlayerList(sport: sport)
-        let deduped = JsonParser.deduplicate(players)
-        playerListManager.playerInfoList = deduped
-        SporTriviaLogger.info("Player list loaded: \(deduped.count) players (from \(players.count) raw)")
+        SporTriviaLogger.info("Player list loaded: \(players.count) players")
 
-        // 3. Set correct player info
-        gameState.correctPlayerInfo = findMatchingPlayerInfo(
-            playerIds: correctPlayerIds,
-            in: playerListManager.playerInfoList
-        )
-        SporTriviaLogger.info("Matched \(gameState.correctPlayerInfo.count) of \(correctPlayerIds.count) player IDs to player names")
+        // 3. Match answers to the player list
+        let matchedPlayers = findMatchingPlayerInfo(playerIds: loadedCorrectIds, in: players)
+        SporTriviaLogger.info("Matched \(matchedPlayers.count) of \(loadedCorrectIds.count) player IDs to player names")
 
-        if gameState.correctPlayerInfo.isEmpty && !correctPlayerIds.isEmpty {
+        if matchedPlayers.isEmpty && !loadedCorrectIds.isEmpty {
             SporTriviaLogger.warning("\u{26a0}\u{fe0f} 0 players matched! This means the answer key player IDs don't match the player list IDs.")
-            SporTriviaLogger.warning("Answer key IDs (first 5): \(Array(correctPlayerIds.prefix(5)))")
-            SporTriviaLogger.warning("Player list IDs (first 5): \(Array(playerListManager.playerInfoList.prefix(5).map { $0.playerId }))")
+            SporTriviaLogger.warning("Answer key IDs (first 5): \(Array(loadedCorrectIds.prefix(5)))")
+            SporTriviaLogger.warning("Player list IDs (first 5): \(Array(players.prefix(5).map { $0.playerId }))")
+        }
+
+        await MainActor.run {
+            gameState.customQuestion = answerKey.question
+            gameState.collectFields = answerKey.collectFields ?? .legacyDefault
+            gameState.responsePath = answerKey.responsePath
+            playerListManager.playerInfoList = players
+            gameState.correctPlayerInfo = matchedPlayers
         }
 
         // 4. Load team image
@@ -168,10 +181,14 @@ class GameEngine: ObservableObject {
                 over18: gameState.over18,
                 customFieldAnswers: gameState.customFieldAnswers
             )
+            // Best-effort location: waits at most 8s for a fix that started
+            // warming when the game opened; never fails the upload.
+            let location = await locationProvider?.capture(timeout: 8) ?? .unavailable
             let resultData = try JsonParser.formatGameResults(
                 userInfo: userInfo,
                 gameId: gameState.gameId,
-                correctPlayers: gameState.correctUserPlayerInfo
+                correctPlayers: gameState.correctUserPlayerInfo,
+                location: location
             )
 
             if let responsePath = gameState.responsePath?.trimmingCharacters(in: .whitespacesAndNewlines),

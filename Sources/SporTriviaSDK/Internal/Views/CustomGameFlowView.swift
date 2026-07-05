@@ -36,6 +36,7 @@ struct CustomGameFlowView: View {
     )
 
     @State private var realEngine: GameEngine?
+    @State private var locationService = LocationService()
 
     var body: some View {
         Group {
@@ -113,8 +114,14 @@ struct CustomGameFlowView: View {
                 try await engine.loadGame(gameId: gameId, sport: sport)
 
                 await MainActor.run {
+                    engine.locationProvider = locationService
                     self.realEngine = engine
                     isLoading = false
+                    // Ask for location on the player-info screen (or at game
+                    // start when there is nothing to collect) so a GPS fix is
+                    // usually ready by the time results upload. Declining
+                    // never blocks the game or the upload.
+                    locationService.requestPermissionAndWarmUp()
                     if gameState.collectFields.hasAnythingToCollect {
                         SporTriviaLogger.info("Game loaded — collecting player info first")
                         flowStep = .userInfo

@@ -62,6 +62,41 @@ final class PlayerListManagerTests: XCTestCase {
         XCTAssertTrue(result.playerId.hasPrefix("unknown_"))
     }
 
+    func testFilterCapsAtMaxSuggestions() {
+        let manager = PlayerListManager()
+        manager.playerInfoList = (0..<50).map {
+            PlayerInfo(playerId: "p\($0)", playerName: "Common Name \($0)", yearsPlayed: "2000-2010")
+        }
+
+        manager.userInput = "Common"
+        manager.updateFilteredPlayerInfoList()
+
+        XCTAssertEqual(manager.filteredPlayerInfoList.count, PlayerListManager.maxSuggestions)
+    }
+
+    func testFilterUsesPrecomputedNormalizedName() {
+        let player = PlayerInfo(playerId: "p1", playerName: "Jos\u{00e9} Pe\u{00f1}a", yearsPlayed: "2004-2018")
+        XCTAssertEqual(player.normalizedName, "josepena")
+
+        let manager = PlayerListManager()
+        manager.playerInfoList = [player]
+        manager.userInput = "jose pena"
+        manager.updateFilteredPlayerInfoList()
+        XCTAssertEqual(manager.filteredPlayerInfoList.count, 1)
+    }
+
+    func testNormalizedNameSurvivesCodableRoundTrip() throws {
+        let player = PlayerInfo(playerId: "p1", playerName: "Jos\u{00e9} Pe\u{00f1}a", yearsPlayed: "2004-2018")
+        let data = try JSONEncoder().encode(player)
+
+        // Coded shape unchanged: exactly the three original fields
+        let raw = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        XCTAssertEqual(Set(raw?.keys.map { $0 } ?? []), Set(["playerId", "playerName", "yearsPlayed"]))
+
+        let decoded = try JSONDecoder().decode(PlayerInfo.self, from: data)
+        XCTAssertEqual(decoded.normalizedName, "josepena")
+    }
+
     func testEmptyInputReturnsNoResults() {
         let manager = PlayerListManager()
         manager.playerInfoList = [

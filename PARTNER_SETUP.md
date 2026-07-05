@@ -123,6 +123,99 @@ The player-info screen the SDK shows before a game is driven by the question's *
 
 ---
 
+## Game Result Uploads (schema v2)
+
+When a game ends the SDK uploads one JSON document to S3 (to the folder named
+by the answer key's `response_path`). **iOS and Android emit exactly the same
+fields in exactly the same order**, so partner pipelines can parse either
+platform identically. Branch on `schema_version` if you also process
+pre-v2 records.
+
+| # | Field | Type | Notes |
+|---|---|---|---|
+| 1 | `schema_version` | int | `2` |
+| 2 | `game_id` | string | The question's game identifier |
+| 3 | `submitted_at` | string | UTC, `yyyy-MM-ddTHH:mm:ssZ` |
+| 4 | `platform` | string | `"ios"` or `"android"` (`"web"` for portal plays) |
+| 5 | `source` | string | `"sdk"` (partner apps) or `"app"` (first-party apps) |
+| 6 | `sdk_version` | string \| null | SDK release, null from first-party apps |
+| 7 | `first_name` | string | Empty string when the fan declined |
+| 8 | `last_name` | string | Empty string when the fan declined |
+| 9 | `name` | string | first + last joined |
+| 10 | `email` | string | Empty string when declined |
+| 11 | `phone` | string | Empty string when declined |
+| 12 | `over_18` | bool | false when not asked |
+| 13 | `custom_field_answers` | object | Keyed by question label, keys sorted alphabetically |
+| 14 | `answers_found` | array[string] | `"Player Name years"` in guess order |
+| 15 | `correct_answers` | array[object] | `{player_id, player_name, years_played}` |
+| 16 | `location` | object \| null | `{latitude, longitude, accuracy_meters, captured_at}`; null unless granted |
+| 17 | `location_status` | string | `granted` / `denied` / `unavailable` / `timeout` |
+
+Sample:
+
+```json
+{"schema_version":2,"game_id":"NYY_NYM","submitted_at":"2026-07-05T18:00:00Z",
+ "platform":"ios","source":"sdk","sdk_version":"1.1.0",
+ "first_name":"Jane","last_name":"Smith","name":"Jane Smith",
+ "email":"jane@example.com","phone":"555-0100","over_18":true,
+ "custom_field_answers":{"How often do you attend games?":"Weekly"},
+ "answers_found":["Player One 2000-2010"],
+ "correct_answers":[{"player_id":"p1","player_name":"Player One","years_played":"2000-2010"}],
+ "location":{"latitude":40.75,"longitude":-73.99,"accuracy_meters":12.5,"captured_at":"2026-07-05T17:59:58Z"},
+ "location_status":"granted"}
+```
+
+**Changes from v1** (records without `schema_version`): `gameId` → `game_id`;
+the duplicate `firstName`/`lastName`/`phoneNumber` keys are gone (use
+`first_name`/`last_name`/`phone`); `correctAnswers` → `correct_answers` with
+snake_case inner keys; `platform`/`source`/`sdk_version`/`location`/
+`location_status` are new; key order is now guaranteed.
+
+---
+
+## Location Capture
+
+The SDK includes the fan's device location with game-result uploads
+(`location` + `location_status` above). It is strictly **best-effort**: the
+game and the upload always proceed, with `location: null` and an explanatory
+status, when the fan declines, the fix times out (~8s max wait at upload
+time), or location services are off.
+
+**Prompt timing:** the OS permission dialog ("while using the app") appears
+over the SDK's player-info screen when a game opens, and a GPS fix starts
+warming immediately so it's usually ready before the game ends.
+
+### iOS partners
+
+Add the usage string to your app's Info.plist — without it the OS silently
+ignores the request, the SDK logs one warning, and uploads carry
+`location_status: "unavailable"`:
+
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Your location is included with your trivia answers to help teams understand where their fans are playing from.</string>
+```
+
+Update your App Store **App Privacy** answers to declare location collection.
+
+### Android partners
+
+The SDK library manifest declares `ACCESS_FINE_LOCATION` and
+`ACCESS_COARSE_LOCATION`; manifest merging adds them to your app
+automatically (no Play Services dependency — the SDK uses the framework
+`LocationManager`). Declare location collection in your Play Console
+**Data safety** form.
+
+To ship without location entirely, strip the permissions in your app
+manifest — the SDK then uploads `location_status: "unavailable"`:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
+```
+
+---
+
 ## Deep Linking & QR Codes
 
 Questions built in the SporTrivia portal with the **"Your own app"** destination produce a scannable QR code that launches the SDK inside your app. The flow:

@@ -17,6 +17,10 @@ import SwiftUI
 /// )
 /// ```
 public final class SporTriviaSDK {
+    /// SDK release version, reported as `sdk_version` in game-result uploads.
+    /// Keep in step with the git tag when releasing.
+    public static let sdkVersion = "1.1.0"
+
     static var configuration: SporTriviaConfiguration?
 
     /// Configure the SDK. Must be called before launching any game views.

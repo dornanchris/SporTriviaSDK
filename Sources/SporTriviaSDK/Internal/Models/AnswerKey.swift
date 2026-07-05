@@ -197,17 +197,23 @@ struct PlayerData: Decodable {
             playerName = try altContainer.decode(String.self, forKey: .name)
         }
 
-        // Handle seasons as String or Int
-        if let firstInt = try? container.decode(Int.self, forKey: .first_season) {
-            first_season = String(firstInt)
-        } else {
-            first_season = try container.decode(String.self, forKey: .first_season)
-        }
+        // Seasons are lenient: Int, Double, or String accepted; null/absent
+        // becomes "" so one seasonless record can't invalidate the player
+        // (the NFL list ships "first_season": null for some players).
+        first_season = PlayerData.decodeSeason(container, .first_season)
+        last_season = PlayerData.decodeSeason(container, .last_season)
+    }
 
-        if let lastInt = try? container.decode(Int.self, forKey: .last_season) {
-            last_season = String(lastInt)
-        } else {
-            last_season = try container.decode(String.self, forKey: .last_season)
+    private static func decodeSeason(_ container: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) -> String {
+        if let intValue = try? container.decode(Int.self, forKey: key) {
+            return String(intValue)
         }
+        if let doubleValue = try? container.decode(Double.self, forKey: key) {
+            return String(Int(doubleValue))
+        }
+        if let stringValue = try? container.decode(String.self, forKey: key) {
+            return stringValue
+        }
+        return ""
     }
 }
