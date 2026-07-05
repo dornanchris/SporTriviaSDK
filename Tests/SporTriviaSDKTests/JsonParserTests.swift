@@ -36,6 +36,35 @@ final class JsonParserTests: XCTestCase {
         XCTAssertNil(answerKey.question)
     }
 
+    func testParseAnswerKeyWithResponsePath() throws {
+        let json = """
+        {
+            "combo": "custom_who-holds-the-home-run-record",
+            "type": 2,
+            "player_id": ["p1"],
+            "response_path": "custom/MLB/CD Test/who-holds-the-home-run-record/responses/"
+        }
+        """.data(using: .utf8)!
+
+        let answerKey = try JsonParser.parseAnswerKey(from: json)
+
+        XCTAssertEqual(answerKey.responsePath, "custom/MLB/CD Test/who-holds-the-home-run-record/responses/")
+    }
+
+    func testParseAnswerKeyWithoutResponsePath() throws {
+        let json = """
+        {
+            "combo": "NYI_Top5A",
+            "type": 2,
+            "player_id": ["p1"]
+        }
+        """.data(using: .utf8)!
+
+        let answerKey = try JsonParser.parseAnswerKey(from: json)
+
+        XCTAssertNil(answerKey.responsePath)
+    }
+
     func testParsePlayerList() throws {
         let json = """
         [

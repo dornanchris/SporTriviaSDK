@@ -8,6 +8,11 @@ struct AnswerKey: Decodable {
     let question: String?
     let collectFields: CollectFields?
     let sponsorship: SponsorshipInfo?
+    /// S3 prefix where game results must be uploaded, embedded by the portal
+    /// (e.g. "custom/MLB/CD Test/who-holds-the-home-run-record/responses/").
+    /// Answer keys published before this field existed have none — the SDK
+    /// falls back to deriving a path from the gameId.
+    let responsePath: String?
 
     enum CodingKeys: String, CodingKey {
         case player_id
@@ -16,6 +21,7 @@ struct AnswerKey: Decodable {
         case question
         case collect_fields
         case sponsorship
+        case response_path
     }
 
     init(from decoder: Decoder) throws {
@@ -41,6 +47,7 @@ struct AnswerKey: Decodable {
         question = try container.decodeIfPresent(String.self, forKey: .question)
         collectFields = try? container.decodeIfPresent(CollectFields.self, forKey: .collect_fields)
         sponsorship = try? container.decodeIfPresent(SponsorshipInfo.self, forKey: .sponsorship)
+        responsePath = (try? container.decodeIfPresent(String.self, forKey: .response_path)) ?? nil
     }
 }
 

@@ -314,7 +314,13 @@ When provisioning a new partner, create an IAM user with the following policy. T
 | Read | `answer_keys/custom/*` | Load custom game answer keys |
 | Read | `answer_keys/*/all_*_players.json` | Load player autocomplete lists |
 | Read | `team_images/*` | Load team logos |
+| Read | `sponsorships/*` | Load sponsorship banner images |
 | Write | `custom/*` | Upload game results (user scores) |
+
+> **Existing partners:** IAM users provisioned before the sponsorship feature are missing the
+> `sponsorships/*` grant, so banners silently fail to load with a 403. Re-apply the policy above,
+> or run `aws/update_sdk_iam_policy.py` (in the SporTrivia repo) — it idempotently adds the
+> missing grant to every IAM user carrying the `SporTriviaSDKAccess` inline policy.
 
 ### What this policy denies (implicitly)
 

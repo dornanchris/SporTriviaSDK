@@ -32,6 +32,7 @@ class GameEngine: ObservableObject {
         correctPlayerIds = answerKey.player_id.map { normalizePlayerId($0) }
         gameState.customQuestion = answerKey.question
         gameState.collectFields = answerKey.collectFields ?? .legacyDefault
+        gameState.responsePath = answerKey.responsePath
         SporTriviaLogger.info("Answer key loaded: \(correctPlayerIds.count) correct IDs")
         SporTriviaLogger.debug("Correct IDs: \(correctPlayerIds)")
 
@@ -173,17 +174,27 @@ class GameEngine: ObservableObject {
                 correctPlayers: gameState.correctUserPlayerInfo
             )
 
-            let comboComponents = gameState.gameId.components(separatedBy: "_")
-            let teamAbbr = comboComponents[0]
-            let suffix = comboComponents.count > 1 ? comboComponents.dropFirst().joined(separator: "_") : ""
-            let teamName = TeamAbbreviations.teamName(forAbbreviation: teamAbbr, sport: gameState.sport) ?? teamAbbr
+            if let responsePath = gameState.responsePath?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !responsePath.isEmpty {
+                // Preferred: the portal embeds the exact upload destination in
+                // the answer key so results land where the portal export reads.
+                try await s3Service.uploadGameResults(responsePath: responsePath, resultData: resultData)
+            } else {
+                // Legacy answer keys (no response_path): derive a path from the
+                // gameId. For partner accounts this folder may not match the
+                // portal export's location — republish the question to fix.
+                let comboComponents = gameState.gameId.components(separatedBy: "_")
+                let teamAbbr = comboComponents[0]
+                let suffix = comboComponents.count > 1 ? comboComponents.dropFirst().joined(separator: "_") : ""
+                let teamName = TeamAbbreviations.teamName(forAbbreviation: teamAbbr, sport: gameState.sport) ?? teamAbbr
 
-            try await s3Service.uploadGameResults(
-                sport: gameState.sport,
-                teamName: teamName,
-                suffix: suffix,
-                resultData: resultData
-            )
+                try await s3Service.uploadGameResults(
+                    sport: gameState.sport,
+                    teamName: teamName,
+                    suffix: suffix,
+                    resultData: resultData
+                )
+            }
         } catch {
             print("SporTriviaSDK: Failed to upload game results: \(error)")
         }

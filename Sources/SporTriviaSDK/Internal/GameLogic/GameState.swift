@@ -42,6 +42,10 @@ class GameState: ObservableObject {
     // before the player-info screen is shown.
     var collectFields: CollectFields = .legacyDefault
 
+    // S3 prefix from the answer key where game results are uploaded; nil for
+    // answer keys published before the portal embedded response_path.
+    var responsePath: String?
+
     // Per-question sponsorship from the answer key (nil banner = no sponsor)
     @Published var sponsorshipImage: UIImage?
     @Published var sponsorshipBrand: String = ""
