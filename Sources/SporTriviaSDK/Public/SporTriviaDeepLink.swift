@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// A parsed SporTrivia deep link.
 ///
@@ -95,5 +98,39 @@ public struct SporTriviaDeepLink: Equatable, Sendable {
             return nil
         }
         return parse(url)
+    }
+
+    /// Checks the system clipboard for a SporTrivia deep link URL.
+    ///
+    /// The SporTrivia redirect page copies the deep link to the clipboard
+    /// before sending the user to the App Store. Call this method once on
+    /// app launch to recover the deep link after the user installs and
+    /// opens the app for the first time.
+    ///
+    /// If a valid deep link is found it is consumed (the clipboard is
+    /// cleared) so it will not trigger again on subsequent launches.
+    ///
+    /// - Returns: A parsed ``SporTriviaDeepLink`` if the clipboard
+    ///   contained a valid game link, or `nil` otherwise.
+    @MainActor
+    public static func checkClipboard() -> SporTriviaDeepLink? {
+        #if canImport(UIKit)
+        guard let clipString = UIPasteboard.general.string,
+              !clipString.isEmpty else {
+            SporTriviaLogger.debug("Clipboard: empty or no string")
+            return nil
+        }
+
+        guard let link = parse(clipString) else {
+            SporTriviaLogger.debug("Clipboard: not a SporTrivia deep link")
+            return nil
+        }
+
+        SporTriviaLogger.info("Clipboard: found deep link gameId=\(link.gameId), sport=\(link.sport.rawValue)")
+        UIPasteboard.general.string = ""
+        return link
+        #else
+        return nil
+        #endif
     }
 }
