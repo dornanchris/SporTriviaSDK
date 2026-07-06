@@ -119,9 +119,17 @@ struct GameView: View {
     private var inputSection: some View {
         VStack(spacing: 4) {
             TextField("Enter player name", text: $userInput)
+                .foregroundColor(theme.textColor)
+                .accentColor(theme.accentColor)
                 .padding()
-                .background(Color(UIColor.systemGray6))
-                .cornerRadius(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(red: 15 / 255, green: 23 / 255, blue: 42 / 255).opacity(0.7))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color(red: 148 / 255, green: 163 / 255, blue: 184 / 255).opacity(0.3), lineWidth: 1)
+                )
                 .autocapitalization(.words)
                 .disableAutocorrection(true)
                 .onChange(of: userInput) { newValue in
@@ -148,11 +156,12 @@ struct GameView: View {
                         }) {
                             HStack {
                                 Text(player.playerName)
-                                    .foregroundColor(.primary)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(theme.textColor)
                                 Spacer()
                                 Text(player.yearsPlayed)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(theme.textColor.opacity(0.6))
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 10)
@@ -160,11 +169,18 @@ struct GameView: View {
                         }
                         .buttonStyle(.plain)
                         Divider()
+                            .background(Color.white.opacity(0.1))
                     }
                 }
-                .background(Color(UIColor.systemBackground))
-                .cornerRadius(8)
-                .shadow(radius: 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(red: 2 / 255, green: 6 / 255, blue: 23 / 255).opacity(0.97))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(theme.primaryColor.opacity(0.35), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.45), radius: 12, y: 6)
             }
         }
     }
@@ -172,11 +188,23 @@ struct GameView: View {
     private var submitButton: some View {
         Button(action: onSubmit) {
             Text("Submit")
+                .fontWeight(.bold)
                 .foregroundColor(.white)
                 .padding()
-                .frame(maxWidth: .infinity)
-                .background(userInput.isEmpty ? Color.gray : theme.primaryColor)
-                .cornerRadius(8)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: userInput.isEmpty
+                                    ? [Color.gray.opacity(0.5), Color.gray.opacity(0.4)]
+                                    : [theme.primaryColor, theme.primaryColor.opacity(0.75)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
         }
         .disabled(userInput.isEmpty)
     }

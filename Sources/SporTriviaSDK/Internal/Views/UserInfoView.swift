@@ -118,11 +118,23 @@ struct UserInfoView: View {
 
                     Button(action: submitForm) {
                         Text("Submit")
+                            .fontWeight(.bold)
                             .foregroundColor(.white)
                             .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(isFormValid ? theme.primaryColor : Color.gray)
-                            .cornerRadius(8)
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: isFormValid
+                                                ? [theme.primaryColor, theme.primaryColor.opacity(0.75)]
+                                                : [Color.gray.opacity(0.5), Color.gray.opacity(0.4)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            )
+                            .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
                     }
                     .disabled(!isFormValid)
                     .padding(.horizontal)
@@ -145,9 +157,17 @@ struct UserInfoView: View {
 
     private func inputField<Field: View>(_ field: Field) -> some View {
         field
+            .foregroundColor(theme.textColor)
+            .accentColor(theme.accentColor)
             .padding()
-            .background(Color(UIColor.systemGray6))
-            .cornerRadius(8)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(red: 15 / 255, green: 23 / 255, blue: 42 / 255).opacity(0.7))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color(red: 148 / 255, green: 163 / 255, blue: 184 / 255).opacity(0.3), lineWidth: 1)
+            )
     }
 
     private func customAnswerBinding(for question: CustomCollectionQuestion) -> Binding<String> {

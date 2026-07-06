@@ -47,28 +47,49 @@ struct GameOverView: View {
                 // Share button
                 Button(action: shareScore) {
                     Label("Share Score", systemImage: "square.and.arrow.up")
+                        .fontWeight(.bold)
                         .padding()
-                        .background(Color.green)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(red: 34 / 255, green: 197 / 255, blue: 94 / 255),
+                                            theme.primaryColor
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                        )
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
                 }
 
                 // See Answers button
                 Button(action: onSeeAnswers) {
                     Text("See Answers")
+                        .fontWeight(.bold)
                         .padding()
-                        .background(theme.primaryColor)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(theme.primaryColor)
+                        )
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
                 }
 
                 // Done button
                 Button(action: onDone) {
                     Label("Done", systemImage: "checkmark.circle")
+                        .fontWeight(.bold)
                         .padding()
-                        .background(theme.primaryColor)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(theme.primaryColor)
+                        )
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
                 }
 
                 Spacer()
