@@ -24,10 +24,34 @@ public struct SporTriviaGameResult: Sendable {
     public let correctPlayerNames: [String]
 }
 
-/// User information collected by the SDK's user info screen.
+/// User information collected by the SDK's player-info screen.
+///
+/// Which fields are populated depends on the question's Data Capture
+/// configuration in the SporTrivia portal — fields that were not asked
+/// for stay empty.
 public struct SporTriviaUserInfo: Sendable {
     public let firstName: String
     public let lastName: String
     public let email: String
     public let phoneNumber: String
+    /// Whether the fan checked the "I am over 18" box (false when not asked).
+    public let over18: Bool
+    /// Answers to portal-configured custom questions, keyed by question label.
+    public let customFieldAnswers: [String: String]
+
+    public init(
+        firstName: String = "",
+        lastName: String = "",
+        email: String = "",
+        phoneNumber: String = "",
+        over18: Bool = false,
+        customFieldAnswers: [String: String] = [:]
+    ) {
+        self.firstName = firstName
+        self.lastName = lastName
+        self.email = email
+        self.phoneNumber = phoneNumber
+        self.over18 = over18
+        self.customFieldAnswers = customFieldAnswers
+    }
 }

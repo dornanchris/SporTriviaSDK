@@ -35,6 +35,21 @@ class GameState: ObservableObject {
     @Published var lastName: String = ""
     @Published var email: String = ""
     @Published var phoneNumber: String = ""
+    @Published var over18: Bool = false
+    @Published var customFieldAnswers: [String: String] = [:]
+
+    // Data-capture configuration from the answer key; set during loading,
+    // before the player-info screen is shown.
+    var collectFields: CollectFields = .legacyDefault
+
+    // S3 prefix from the answer key where game results are uploaded; nil for
+    // answer keys published before the portal embedded response_path.
+    var responsePath: String?
+
+    // Per-question sponsorship from the answer key (nil banner = no sponsor)
+    @Published var sponsorshipImage: UIImage?
+    @Published var sponsorshipBrand: String = ""
+    @Published var sponsorshipURL: String = ""
 
     /// Total number of players remaining to guess.
     var playersLeft: Int {

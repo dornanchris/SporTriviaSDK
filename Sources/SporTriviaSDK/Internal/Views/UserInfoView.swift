@@ -1,6 +1,12 @@
 import SwiftUI
 
-/// User info collection screen — first step in the custom game flow.
+/// Player info collection screen shown after the answer key loads.
+///
+/// The fields displayed are driven by the question's Data Capture
+/// configuration in the SporTrivia portal (`collect_fields` in the answer
+/// key JSON): standard name/email/phone fields, an over-18 checkbox, and
+/// any custom questions. Legacy answer keys without a configuration show
+/// the original name/email/phone form.
 struct UserInfoView: View {
     @ObservedObject var gameState: GameState
     let onSubmit: () -> Void
@@ -10,14 +16,33 @@ struct UserInfoView: View {
     @State private var lastName: String = ""
     @State private var email: String = ""
     @State private var phoneNumber: String = ""
+    @State private var over18: Bool = false
+    @State private var customAnswers: [String: String] = [:]
     @State private var saveMyInfo: Bool = false
 
     private let defaults = UserDefaults(suiteName: "com.sportrivia.sdk")
 
     private var theme: SporTriviaTheme { SporTriviaSDK.theme }
 
+    private var collectFields: CollectFields { gameState.collectFields }
+
     private var isFormValid: Bool {
-        !firstName.isEmpty && !lastName.isEmpty && !email.isEmpty && !phoneNumber.isEmpty
+        if collectFields.name && (firstName.isEmpty || lastName.isEmpty) {
+            return false
+        }
+        if collectFields.email && email.isEmpty {
+            return false
+        }
+        if collectFields.phone && phoneNumber.isEmpty {
+            return false
+        }
+        for question in collectFields.customQuestions where question.required {
+            let answer = (customAnswers[question.id] ?? "").trimmingCharacters(in: .whitespaces)
+            if answer.isEmpty {
+                return false
+            }
+        }
+        return true
     }
 
     var body: some View {
@@ -36,24 +61,60 @@ struct UserInfoView: View {
                         .foregroundColor(theme.textColor)
                         .padding(.top, 40)
 
-                    Group {
-                        TextField("First Name", text: $firstName)
-                        TextField("Last Name", text: $lastName)
-                        TextField("Email", text: $email)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.emailAddress)
-                            .autocapitalization(.none)
-                        TextField("Phone Number", text: $phoneNumber)
-                            .keyboardType(.phonePad)
-                            .textContentType(.telephoneNumber)
+                    if collectFields.name {
+                        inputField(TextField("First Name", text: $firstName))
+                        inputField(TextField("Last Name", text: $lastName))
                     }
-                    .padding()
-                    .background(Color(UIColor.systemGray6))
-                    .cornerRadius(8)
 
-                    Toggle("Save my info", isOn: $saveMyInfo)
-                        .foregroundColor(theme.textColor)
-                        .padding(.horizontal)
+                    if collectFields.email {
+                        inputField(
+                            TextField("Email", text: $email)
+                                .keyboardType(.emailAddress)
+                                .textContentType(.emailAddress)
+                                .autocapitalization(.none)
+                        )
+                    }
+
+                    if collectFields.phone {
+                        inputField(
+                            TextField("Phone Number", text: $phoneNumber)
+                                .keyboardType(.phonePad)
+                                .textContentType(.telephoneNumber)
+                        )
+                    }
+
+                    ForEach(collectFields.customQuestions) { question in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 4) {
+                                Text(question.label)
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(theme.textColor)
+                                if question.required {
+                                    Text("*")
+                                        .foregroundColor(theme.incorrectColor)
+                                }
+                            }
+                            inputField(
+                                TextField(
+                                    question.placeholder.isEmpty ? question.label : question.placeholder,
+                                    text: customAnswerBinding(for: question)
+                                )
+                            )
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if collectFields.over18 {
+                        Toggle("I am over 18", isOn: $over18)
+                            .foregroundColor(theme.textColor)
+                            .padding(.horizontal)
+                    }
+
+                    if hasStandardFields {
+                        Toggle("Save my info", isOn: $saveMyInfo)
+                            .foregroundColor(theme.textColor)
+                            .padding(.horizontal)
+                    }
 
                     Button(action: submitForm) {
                         Text("Submit")
@@ -78,13 +139,43 @@ struct UserInfoView: View {
         .onAppear(perform: loadSavedInfo)
     }
 
-    private func submitForm() {
-        gameState.firstName = firstName
-        gameState.lastName = lastName
-        gameState.email = email
-        gameState.phoneNumber = phoneNumber
+    private var hasStandardFields: Bool {
+        collectFields.name || collectFields.email || collectFields.phone
+    }
 
-        if saveMyInfo {
+    private func inputField<Field: View>(_ field: Field) -> some View {
+        field
+            .padding()
+            .background(Color(UIColor.systemGray6))
+            .cornerRadius(8)
+    }
+
+    private func customAnswerBinding(for question: CustomCollectionQuestion) -> Binding<String> {
+        Binding(
+            get: { customAnswers[question.id] ?? "" },
+            set: { customAnswers[question.id] = $0 }
+        )
+    }
+
+    private func submitForm() {
+        gameState.firstName = collectFields.name ? firstName : ""
+        gameState.lastName = collectFields.name ? lastName : ""
+        gameState.email = collectFields.email ? email : ""
+        gameState.phoneNumber = collectFields.phone ? phoneNumber : ""
+        gameState.over18 = collectFields.over18 ? over18 : false
+
+        // Keyed by question label so downstream consumers (portal contacts
+        // view, CSV export) show the question text, not an internal id.
+        var answersByLabel: [String: String] = [:]
+        for question in collectFields.customQuestions {
+            let answer = (customAnswers[question.id] ?? "").trimmingCharacters(in: .whitespaces)
+            if !answer.isEmpty {
+                answersByLabel[question.label] = answer
+            }
+        }
+        gameState.customFieldAnswers = answersByLabel
+
+        if saveMyInfo && hasStandardFields {
             defaults?.set(true, forKey: "saveUserInfo")
             defaults?.set(firstName, forKey: "firstName")
             defaults?.set(lastName, forKey: "lastName")

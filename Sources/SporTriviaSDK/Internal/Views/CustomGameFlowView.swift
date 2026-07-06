@@ -10,29 +10,15 @@ struct CustomGameFlowView: View {
 
     @StateObject private var gameState = GameState()
     @StateObject private var playerListManager = PlayerListManager()
-    @State private var flowStep: FlowStep = .userInfo
+    // Loading runs first so the player-info screen can be built from the
+    // answer key's data-capture configuration (collect_fields).
+    @State private var flowStep: FlowStep = .loading
     @State private var isLoading: Bool = false
     @State private var loadError: String?
-
-    private var s3Service: S3DataService {
-        S3DataService(
-            credentialProvider: configuration.credentialProvider,
-            bucketName: configuration.s3BucketName
-        )
-    }
-
-    private var imageCache: ImageCache {
-        ImageCache(s3Service: s3Service)
-    }
-
-    @StateObject private var gameEngine: GameEngine = GameEngine(
-        gameState: GameState(),
-        playerListManager: PlayerListManager(),
-        s3Service: S3DataService(credentialProvider: PlaceholderCredentialProvider(), bucketName: ""),
-        imageCache: ImageCache(s3Service: S3DataService(credentialProvider: PlaceholderCredentialProvider(), bucketName: ""))
-    )
+    @State private var showExitConfirm: Bool = false
 
     @State private var realEngine: GameEngine?
+    @State private var locationService = LocationService()
 
     var body: some View {
         Group {
@@ -40,12 +26,17 @@ struct CustomGameFlowView: View {
             case .userInfo:
                 UserInfoView(
                     gameState: gameState,
-                    onSubmit: { startLoading() },
+                    onSubmit: { beginGame() },
                     onCancel: { delegate?.sporTriviaDidCancel() }
                 )
 
             case .loading:
                 loadingView
+                    .onAppear {
+                        if realEngine == nil && !isLoading {
+                            startLoading()
+                        }
+                    }
 
             case .game:
                 if let engine = realEngine {
@@ -53,7 +44,8 @@ struct CustomGameFlowView: View {
                         gameState: gameState,
                         gameEngine: engine,
                         playerListManager: playerListManager,
-                        onGameEnd: { endGame() }
+                        onGameEnd: { endGame() },
+                        onExit: { showExitConfirm = true }
                     )
                 }
 
@@ -71,6 +63,12 @@ struct CustomGameFlowView: View {
                     onDone: { finishFlow() }
                 )
             }
+        }
+        .alert("Leave the game?", isPresented: $showExitConfirm) {
+            Button("Keep Playing", role: .cancel) {}
+            Button("Leave", role: .destructive) { exitGame() }
+        } message: {
+            Text("Your progress won't be saved.")
         }
     }
 
@@ -98,11 +96,23 @@ struct CustomGameFlowView: View {
                 try await engine.loadGame(gameId: gameId, sport: sport)
 
                 await MainActor.run {
+                    engine.locationProvider = locationService
                     self.realEngine = engine
-                    engine.startGame()
-                    SporTriviaLogger.info("Game started — transitioning to game view")
-                    flowStep = .game
                     isLoading = false
+                    // Ask for location on the player-info screen (or at game
+                    // start when there is nothing to collect) so a GPS fix is
+                    // usually ready by the time results upload. Declining
+                    // never blocks the game or the upload.
+                    locationService.requestPermissionAndWarmUp()
+                    if gameState.collectFields.hasAnythingToCollect {
+                        SporTriviaLogger.info("Game loaded — collecting player info first")
+                        flowStep = .userInfo
+                    } else {
+                        // Nothing configured to collect: skip the info screen.
+                        engine.startGame()
+                        SporTriviaLogger.info("Game started — transitioning to game view")
+                        flowStep = .game
+                    }
                 }
             } catch {
                 SporTriviaLogger.error("Failed to load game '\(gameId)' (\(sport.rawValue)): \(error)")
@@ -115,6 +125,13 @@ struct CustomGameFlowView: View {
         }
     }
 
+    private func beginGame() {
+        guard let engine = realEngine else { return }
+        engine.startGame()
+        SporTriviaLogger.info("Game started — transitioning to game view")
+        flowStep = .game
+    }
+
     private func endGame() {
         gameState.gameInProgress = false
         flowStep = .gameOver
@@ -123,6 +140,11 @@ struct CustomGameFlowView: View {
         if let engine = realEngine {
             Task { await engine.uploadResults() }
         }
+    }
+
+    private func exitGame() {
+        SporTriviaLogger.info("Player exited the game early")
+        delegate?.sporTriviaDidCancel()
     }
 
     private func finishFlow() {
@@ -175,15 +197,4 @@ private enum FlowStep {
     case game
     case gameOver
     case answers
-}
-
-// MARK: - Placeholder (used only for @StateObject initialization; replaced at runtime)
-
-private struct PlaceholderCredentialProvider: SporTriviaCredentialProvider {
-    func presignedGetURL(forKey key: String) async throws -> URL {
-        throw S3DataServiceError.downloadFailed(key: key)
-    }
-    func presignedPutURL(forKey key: String) async throws -> URL {
-        throw S3DataServiceError.uploadFailed(key: key)
-    }
 }

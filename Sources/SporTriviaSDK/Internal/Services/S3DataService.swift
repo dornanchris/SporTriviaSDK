@@ -69,27 +69,14 @@ class S3DataService {
         }
     }
 
-    /// Download the player list for a given sport.
+    /// Download the player list for a given sport. Parsing is lenient —
+    /// malformed records are skipped, never the whole list (see
+    /// JsonParser.parsePlayerList).
     func downloadPlayerList(sport: Sport) async throws -> [PlayerInfo] {
         let key = "answer_keys/\(sport.rawValue)/all_\(sport.rawValue)_players.json"
         SporTriviaLogger.info("Loading player list: \(key)")
         let data = try await download(key: key)
-        let playerDataList = try JSONDecoder().decode([PlayerData].self, from: data)
-        return playerDataList.map { pd in
-            let yearsPlayed = "\(pd.first_season)-\(pd.last_season)"
-                .replacingOccurrences(of: ".0", with: "")
-            return PlayerInfo(
-                playerId: pd.player_id.trimmingCharacters(in: .whitespacesAndNewlines),
-                playerName: pd.playerName
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                    .replacingOccurrences(of: "\u{00c2}", with: "")
-                    .replacingOccurrences(of: "#", with: "")
-                    .replacingOccurrences(of: "+", with: "")
-                    .replacingOccurrences(of: "*", with: "")
-                    .replacingOccurrences(of: "?", with: ""),
-                yearsPlayed: yearsPlayed
-            )
-        }
+        return try JsonParser.parsePlayerList(from: data)
     }
 
     /// Download a team image from S3.
@@ -98,7 +85,18 @@ class S3DataService {
         return try await download(key: key)
     }
 
-    /// Upload custom game results to S3.
+    /// Upload custom game results to the response path embedded in the answer key.
+    func uploadGameResults(responsePath: String, resultData: Data) async throws {
+        var folderPath = responsePath
+        while folderPath.hasSuffix("/") {
+            folderPath = String(folderPath.dropLast())
+        }
+        let key = "\(folderPath)/\(UUID().uuidString).json"
+        try await upload(key: key, data: resultData)
+    }
+
+    /// Upload custom game results to S3 (legacy path derivation, used when the
+    /// answer key predates the embedded response_path).
     func uploadGameResults(sport: Sport, teamName: String, suffix: String, resultData: Data) async throws {
         let folderPath = "custom/\(sport.leagueKey)/\(teamName)/\(suffix)"
         let fileName = UUID().uuidString + ".json"
