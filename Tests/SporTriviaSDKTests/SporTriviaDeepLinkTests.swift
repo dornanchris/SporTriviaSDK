@@ -42,6 +42,24 @@ final class SporTriviaDeepLinkTests: XCTestCase {
         XCTAssertEqual(link, SporTriviaDeepLink(gameId: "LAL_BOS", sport: .nba))
     }
 
+    func testParseMinorLeagueHockeyLinks() {
+        let ahl = SporTriviaDeepLink.parse("partnerapp://sportrivia/custom/HSB_WBS?info=ahl")
+        XCTAssertEqual(ahl?.gameId, "HSB_WBS")
+        XCTAssertEqual(ahl?.sport, .ahl)
+
+        let echl = SporTriviaDeepLink.parse("sportrivia://custom/FLE_TOW?info=echl")
+        XCTAssertEqual(echl?.gameId, "FLE_TOW")
+        XCTAssertEqual(echl?.sport, .echl)
+    }
+
+    func testMinorLeagueSportRawValuesMatchS3Folders() {
+        // The suggestion list is fetched from
+        // answer_keys/<rawValue>/all_<rawValue>_players.json, so a minor-league
+        // custom game must resolve to the ahl/echl folders — not nhl.
+        XCTAssertEqual(Sport.ahl.rawValue, "ahl")
+        XCTAssertEqual(Sport.echl.rawValue, "echl")
+    }
+
     func testParseRejectsUnknownSport() {
         XCTAssertNil(SporTriviaDeepLink.parse("partnerapp://sportrivia/custom/NYI_Top5A?info=cricket"))
     }
